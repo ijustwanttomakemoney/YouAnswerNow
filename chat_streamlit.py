@@ -2,12 +2,12 @@
 import streamlit as st
 import requests
 
-# Set your backend URL (update as needed for your deployed backend)
+# Update BACKEND_URL with your deployed backend URL.
 BACKEND_URL = "https://youanswernow.onrender.com"
 
 st.title("Chat with the Persona-Based Bot")
 
-# Initialize session state for conversation
+# Initialize session state for conversation details.
 if "conversation_id" not in st.session_state:
     st.session_state.conversation_id = None
 if "chat_history" not in st.session_state:
@@ -26,17 +26,16 @@ def send_message(message):
         return
     data = response.json()
     st.session_state.conversation_id = data["conversation_id"]
-    # Append the user message and bot reply to chat history
     st.session_state.chat_history.append(("user", message))
     st.session_state.chat_history.append(("assistant", data["reply"]))
 
-# Use Streamlit's chat input (available in newer versions)
+# Use Streamlit's chat input (requires a recent version of Streamlit)
 user_message = st.chat_input("Type your message here...")
 
 if user_message:
     send_message(user_message)
 
-# Display conversation history using chat message bubbles.
+# Display conversation history using chat bubbles.
 for role, message in st.session_state.chat_history:
     if role == "user":
         st.chat_message("user").write(message)
