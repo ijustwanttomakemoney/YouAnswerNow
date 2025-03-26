@@ -4,15 +4,21 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import openai
 import uuid
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, Any
 from datetime import datetime
-from dotenv import load_dotenv
 import os
 import json
 
-# Load environment variables from your .env file or Render secret file
-load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Try to load the API key from Render's secret file.
+secret_file_path = "/etc/secrets/OPENAI_API_KEY"
+if os.path.exists(secret_file_path):
+    with open(secret_file_path, 'r') as file:
+        openai.api_key = file.read().strip()
+else:
+    # Fallback: Load environment variables from .env for local development.
+    from dotenv import load_dotenv
+    load_dotenv()
+    openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = FastAPI()
 
@@ -20,7 +26,7 @@ app = FastAPI()
 # Each conversation contains: start_time, last_activity, and messages (a list of dicts with role, content, timestamp)
 conversations: Dict[str, Dict[str, Any]] = {}
 
-# Persona model – all fields are optional now.
+# Persona model – all fields are optional.
 class Persona(BaseModel):
     background: Optional[str] = None
     tone: Optional[str] = None
