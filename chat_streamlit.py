@@ -4,7 +4,7 @@ import requests
 
 # Set your backend URL – for local testing, you might use "http://localhost:8000"
 # In production, replace this with the actual URL where your backend is hosted.
-BACKEND_URL = "http://localhost:8000"
+BACKEND_URL = "https://youanswernow.onrender.com"
 
 st.title("Chat with the Persona-Based Bot")
 
