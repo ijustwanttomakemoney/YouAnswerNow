@@ -2,6 +2,7 @@
 import streamlit as st
 import requests
 import pandas as pd
+from streamlit_autorefresh import st_autorefresh
 
 # Set your backend URL (update accordingly)
 BACKEND_URL = "https://youanswernow.onrender.com"
@@ -36,8 +37,9 @@ with st.form("persona_form", clear_on_submit=True):
             st.error(f"Error: {e}")
 
 st.header("Real-Time Chat Logs")
-# Auto-refresh the dashboard every 5 seconds.
-_ = st.experimental_autorefresh(interval=5000, limit=100, key="admin_autorefresh")
+
+# Auto-refresh the dashboard every 5 seconds using streamlit_autorefresh
+count = st_autorefresh(interval=5000, limit=100, key="admin_autorefresh")
 
 try:
     response = requests.get(f"{BACKEND_URL}/api/logs")
