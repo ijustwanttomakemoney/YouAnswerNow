@@ -7,7 +7,7 @@ from PIL import Image
 BACKEND_URL = "https://youanswernow.onrender.com"
 
 image = Image.open("YAN_LOGO.png")
-st.image(image, width=300)
+st.image(image, width=50)
 
 # Initialize session state for conversation details.
 if "conversation_id" not in st.session_state:
