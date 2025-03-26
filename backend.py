@@ -5,9 +5,15 @@ from pydantic import BaseModel
 import openai
 import uuid
 from typing import Optional, List
+import os
+from dotenv import load_dotenv
 
-# Set your OpenAI API key here
-openai.api_key = "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"
+# Load environment variables from the .env file
+load_dotenv()
+
+# Set the API key
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
 
 app = FastAPI()
 
