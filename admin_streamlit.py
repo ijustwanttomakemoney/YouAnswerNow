@@ -2,7 +2,7 @@
 import streamlit as st
 import requests
 
-BACKEND_URL = "http://localhost:8000"  # Update as needed
+BACKEND_URL = "https://youanswernow.onrender.com"  # Update as needed
 
 st.title("Admin - Configure Chatbot Persona")
 
