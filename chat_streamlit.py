@@ -1,11 +1,13 @@
 # chat_streamlit.py
 import streamlit as st
 import requests
+from PIL import Image
 
 # Update BACKEND_URL with your deployed backend URL.
 BACKEND_URL = "https://youanswernow.onrender.com"
 
-st.title("Chat with the Persona-Based Bot")
+image = Image.open("YAN_LOGO.png")
+st.image(image, width=300)
 
 # Initialize session state for conversation details.
 if "conversation_id" not in st.session_state:
