@@ -4,10 +4,11 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import openai
 import uuid
-from typing import Optional, List, Dict
+from typing import Optional, Dict, List, Any
 from datetime import datetime
 from dotenv import load_dotenv
 import os
+import json
 
 # Load environment variables from your .env file or Render secret file
 load_dotenv()
@@ -15,19 +16,17 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = FastAPI()
 
-# In-memory storage for the active persona and conversation logs.
-active_persona = None  # Set via the /api/persona endpoint.
-# Conversations: dict mapping conversation_id to a list of messages.
-# Each message is a dict: { "role": <str>, "content": <str>, "timestamp": <str> }
-conversations: Dict[str, List[Dict[str, str]]] = {}
+# Data structure for storing conversations.
+# Each conversation contains: start_time, last_activity, and messages (a list of dicts with role, content, timestamp)
+conversations: Dict[str, Dict[str, Any]] = {}
 
-# Pydantic models for request/response payloads.
+# Persona model – all fields are optional now.
 class Persona(BaseModel):
-    background: str
-    tone: str
-    knowledge_domain: str
-    workflow: str
-    pain_points: str
+    background: Optional[str] = None
+    tone: Optional[str] = None
+    knowledge_domain: Optional[str] = None
+    workflow: Optional[str] = None
+    pain_points: Optional[str] = None
     sample_transcript: Optional[str] = None
 
 class ChatRequest(BaseModel):
@@ -38,11 +37,18 @@ class ChatResponse(BaseModel):
     conversation_id: str
     reply: str
 
+def persist_logs():
+    """Persist the conversations to a file for later insight."""
+    with open("chat_logs.json", "w") as f:
+        json.dump(conversations, f, indent=2)
+
+# Global active persona (optional)
+active_persona: Optional[Persona] = None
+
 @app.get("/api/persona", response_model=Persona)
 def get_persona():
-    if active_persona is None:
-        raise HTTPException(status_code=404, detail="No active persona set.")
-    return active_persona
+    # Return the current persona (empty if not set)
+    return active_persona or Persona()
 
 @app.post("/api/persona", response_model=Persona)
 def set_persona(persona: Persona):
@@ -56,26 +62,38 @@ def chat(chat_req: ChatRequest):
     if active_persona is None:
         raise HTTPException(status_code=400, detail="No active persona configured.")
     
-    # Create or retrieve conversation_id.
+    now = datetime.utcnow().isoformat()
     conversation_id = chat_req.conversation_id or str(uuid.uuid4())
+    
+    # Initialize conversation if it doesn't exist.
     if conversation_id not in conversations:
-        conversations[conversation_id] = []
-    
-    # Build the system prompt from the active persona.
-    system_prompt = (
-        f"You are a chatbot with the following persona:\n"
-        f"Background: {active_persona.background}\n"
-        f"Tone: {active_persona.tone}\n"
-        f"Knowledge Domain: {active_persona.knowledge_domain}\n"
-        f"Workflow: {active_persona.workflow}\n"
-        f"Pain Points: {active_persona.pain_points}\n"
-    )
+        conversations[conversation_id] = {
+            "start_time": now,
+            "last_activity": now,
+            "messages": []
+        }
+    else:
+        conversations[conversation_id]["last_activity"] = now
+
+    # Build the system prompt based on available persona fields.
+    system_prompt = "You are a chatbot"
+    if active_persona.background:
+        system_prompt += f" with background: {active_persona.background}."
+    if active_persona.tone:
+        system_prompt += f" Tone: {active_persona.tone}."
+    if active_persona.knowledge_domain:
+        system_prompt += f" Knowledge Domain: {active_persona.knowledge_domain}."
+    if active_persona.workflow:
+        system_prompt += f" Workflow: {active_persona.workflow}."
+    if active_persona.pain_points:
+        system_prompt += f" Pain Points: {active_persona.pain_points}."
     if active_persona.sample_transcript:
-        system_prompt += f"Sample Transcript: {active_persona.sample_transcript}\n"
-    
-    # Build the messages for the conversation.
+        system_prompt += f" Sample Transcript: {active_persona.sample_transcript}."
+
+    # Build messages list: system prompt, prior messages, then new user message.
     messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(conversations[conversation_id])
+    for msg in conversations[conversation_id]["messages"]:
+        messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({"role": "user", "content": chat_req.message})
     
     try:
@@ -88,25 +106,27 @@ def chat(chat_req: ChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
     
     reply = response.choices[0].message.content.strip()
-    now = datetime.utcnow().isoformat()
     
-    # Log the user's message and the assistant's reply with a timestamp.
-    conversations[conversation_id].append({
+    # Log the new messages with a timestamp.
+    conversations[conversation_id]["messages"].append({
         "role": "user",
         "content": chat_req.message,
         "timestamp": now
     })
-    conversations[conversation_id].append({
+    conversations[conversation_id]["messages"].append({
         "role": "assistant",
         "content": reply,
         "timestamp": now
     })
     
+    # Persist logs to a file.
+    persist_logs()
+    
     return ChatResponse(conversation_id=conversation_id, reply=reply)
 
 @app.get("/api/logs")
 def get_logs():
-    # Returns all conversation logs.
+    """Return all conversation logs along with metadata."""
     return conversations
 
 if __name__ == "__main__":
