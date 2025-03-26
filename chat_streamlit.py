@@ -8,6 +8,8 @@ BACKEND_URL = "https://youanswernow.onrender.com"
 
 image = Image.open("YAN_LOGO.png")
 st.image(image, width=100)
+st.write("")
+st.write("")
 
 # Initialize session state for conversation details.
 if "conversation_id" not in st.session_state:
