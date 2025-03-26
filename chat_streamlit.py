@@ -2,13 +2,12 @@
 import streamlit as st
 import requests
 
-# Set your backend URL – for local testing, you might use "http://localhost:8000"
-# In production, replace this with the actual URL where your backend is hosted.
+# Set your backend URL (update as needed for your deployed backend)
 BACKEND_URL = "https://youanswernow.onrender.com"
 
 st.title("Chat with the Persona-Based Bot")
 
-# Use Streamlit session_state to persist the conversation_id and chat history
+# Initialize session state for conversation
 if "conversation_id" not in st.session_state:
     st.session_state.conversation_id = None
 if "chat_history" not in st.session_state:
@@ -19,25 +18,27 @@ def send_message(message):
         "conversation_id": st.session_state.conversation_id,
         "message": message,
     }
-    response = requests.post(f"{BACKEND_URL}/api/chat", json=payload)
-    if response.ok:
-        data = response.json()
-        st.session_state.conversation_id = data["conversation_id"]
-        # Append user message and bot reply to chat history
-        st.session_state.chat_history.append(("USER", message))
-        st.session_state.chat_history.append(("BOT", data["reply"]))
-    else:
-        st.error(f"Error: {response.json().get('detail', 'Unknown error')}")
+    try:
+        response = requests.post(f"{BACKEND_URL}/api/chat", json=payload)
+        response.raise_for_status()
+    except Exception as e:
+        st.error(f"Error: {e}")
+        return
+    data = response.json()
+    st.session_state.conversation_id = data["conversation_id"]
+    # Append the user message and bot reply to chat history
+    st.session_state.chat_history.append(("user", message))
+    st.session_state.chat_history.append(("assistant", data["reply"]))
 
-with st.form("chat_form", clear_on_submit=True):
-    user_message = st.text_input("Your Message")
-    submitted = st.form_submit_button("Send")
-    if submitted and user_message:
-        send_message(user_message)
+# Use Streamlit's chat input (available in newer versions)
+user_message = st.chat_input("Type your message here...")
 
-st.markdown("### Conversation:")
-for sender, message in st.session_state.chat_history:
-    if sender == "USER":
-        st.markdown(f"**You:** {message}")
+if user_message:
+    send_message(user_message)
+
+# Display conversation history using chat message bubbles.
+for role, message in st.session_state.chat_history:
+    if role == "user":
+        st.chat_message("user").write(message)
     else:
-        st.markdown(f"**Bot:** {message}")
+        st.chat_message("assistant").write(message)
