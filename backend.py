@@ -4,24 +4,24 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import openai
 import uuid
-from typing import Optional, List
-import os
+from typing import Optional, List, Dict
+from datetime import datetime
 from dotenv import load_dotenv
+import os
 
-# Load environment variables from the .env file
+# Load environment variables from your .env file or Render secret file
 load_dotenv()
-
-# Set the API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
-
 
 app = FastAPI()
 
 # In-memory storage for the active persona and conversation logs.
-active_persona = None  # Updated via POST /api/persona
-conversations = {}     # Dict: conversation_id -> list of messages
+active_persona = None  # Set via the /api/persona endpoint.
+# Conversations: dict mapping conversation_id to a list of messages.
+# Each message is a dict: { "role": <str>, "content": <str>, "timestamp": <str> }
+conversations: Dict[str, List[Dict[str, str]]] = {}
 
-# Pydantic models
+# Pydantic models for request/response payloads.
 class Persona(BaseModel):
     background: str
     tone: str
@@ -56,11 +56,12 @@ def chat(chat_req: ChatRequest):
     if active_persona is None:
         raise HTTPException(status_code=400, detail="No active persona configured.")
     
+    # Create or retrieve conversation_id.
     conversation_id = chat_req.conversation_id or str(uuid.uuid4())
     if conversation_id not in conversations:
         conversations[conversation_id] = []
     
-    # Build the system prompt using the active persona
+    # Build the system prompt from the active persona.
     system_prompt = (
         f"You are a chatbot with the following persona:\n"
         f"Background: {active_persona.background}\n"
@@ -72,7 +73,7 @@ def chat(chat_req: ChatRequest):
     if active_persona.sample_transcript:
         system_prompt += f"Sample Transcript: {active_persona.sample_transcript}\n"
     
-    # Build message history
+    # Build the messages for the conversation.
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(conversations[conversation_id])
     messages.append({"role": "user", "content": chat_req.message})
@@ -87,12 +88,26 @@ def chat(chat_req: ChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
     
     reply = response.choices[0].message.content.strip()
+    now = datetime.utcnow().isoformat()
     
-    # Update conversation history
-    conversations[conversation_id].append({"role": "user", "content": chat_req.message})
-    conversations[conversation_id].append({"role": "assistant", "content": reply})
+    # Log the user's message and the assistant's reply with a timestamp.
+    conversations[conversation_id].append({
+        "role": "user",
+        "content": chat_req.message,
+        "timestamp": now
+    })
+    conversations[conversation_id].append({
+        "role": "assistant",
+        "content": reply,
+        "timestamp": now
+    })
     
     return ChatResponse(conversation_id=conversation_id, reply=reply)
+
+@app.get("/api/logs")
+def get_logs():
+    # Returns all conversation logs.
+    return conversations
 
 if __name__ == "__main__":
     uvicorn.run("backend:app", host="0.0.0.0", port=8000, reload=True)
