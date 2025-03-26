@@ -19,7 +19,7 @@ def send_message(message):
         "conversation_id": st.session_state.conversation_id,
         "message": message,
     }
-    response = requests.post(f"{https://youanswernow.onrender.com}/api/chat", json=payload)
+    response = requests.post(f"{BACKEND_URL}/api/chat", json=payload)
     if response.ok:
         data = response.json()
         st.session_state.conversation_id = data["conversation_id"]
