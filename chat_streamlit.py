@@ -16,6 +16,12 @@ if "conversation_id" not in st.session_state:
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
+# Button to reset the conversation.
+if st.button("Reset Conversation"):
+    st.session_state.conversation_id = None
+    st.session_state.chat_history = []
+    st.experimental_rerun()
+
 # If no conversation has been started, call the /api/start endpoint to get the AI's greeting.
 if st.session_state.conversation_id is None:
     try:
