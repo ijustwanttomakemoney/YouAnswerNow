@@ -93,7 +93,7 @@ def start_conversation():
         system_prompt += f" Sample Transcript: {active_persona.sample_transcript}."
     
     # Add instruction to greet the user first.
-    system_prompt += " When starting a new conversation, greet the user with a friendly introduction as your first message."
+    system_prompt += " When starting a new conversation, greet the user based on your persona."
     
     # Provide an empty user message to trigger the greeting.
     messages = [
