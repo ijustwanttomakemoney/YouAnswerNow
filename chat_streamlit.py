@@ -1,4 +1,3 @@
-# chat_streamlit.py
 import streamlit as st
 import requests
 from PIL import Image
@@ -16,6 +15,18 @@ if "conversation_id" not in st.session_state:
     st.session_state.conversation_id = None
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
+
+# If no conversation has been started, call the /api/start endpoint to get the AI's greeting.
+if st.session_state.conversation_id is None:
+    try:
+        response = requests.post(f"{BACKEND_URL}/api/start", json={})
+        response.raise_for_status()
+        data = response.json()
+        st.session_state.conversation_id = data["conversation_id"]
+        # Add the assistant's greeting to the chat history.
+        st.session_state.chat_history.append(("assistant", data["reply"]))
+    except Exception as e:
+        st.error(f"Error initializing conversation: {e}")
 
 def send_message(message):
     payload = {
